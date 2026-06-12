@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# workdown — a private documentation layer on top of a public git repo.
+# wrkdwn — a private documentation layer on top of a public git repo.
 #
-#   workdown clone <public-url> [dir] [--private <url>]   clone + attach workdown repo
-#   workdown setup [<workdown-url>]                        attach workdown repo to existing clone
-#   workdown skill install                               install the agent skill (~/.claude/skills)
-#   workdown <any-git-command>                           git, scoped to the workdown repo
+#   wrkdwn clone <public-url> [dir] [--private <url>]   clone + attach workdown repo
+#   wrkdwn setup [<workdown-url>]                        attach workdown repo to existing clone
+#   wrkdwn skill install                               install the agent skill (~/.claude/skills)
+#   wrkdwn <any-git-command>                           git, scoped to the workdown repo
 #
 # The workdown repo shares this working tree but tracks ONLY *.wrk.md files.
 # Plain `git` never sees them; `workdown` never sees anything else.
@@ -26,7 +26,7 @@ derive_workdown_url() {
 
 repo_root() {
   git rev-parse --show-toplevel 2>/dev/null || {
-    echo "workdown: not inside a git repository" >&2
+    echo "wrkdwn: not inside a git repository" >&2
     exit 1
   }
 }
@@ -96,7 +96,7 @@ HOOK
     git --git-dir="$gd" symbolic-ref HEAD "refs/heads/$WORKDOWN_BRANCH"
     echo "==> workdown docs checked out"
   else
-    echo "==> workdown repo is empty; write your first doc, then: workdown add <file> && workdown commit"
+    echo "==> workdown repo is empty; write your first doc, then: wrkdwn add <file> && wrkdwn commit"
   fi
 
   echo "==> done"
@@ -112,7 +112,7 @@ cmd_clone() {
       *) args+=("$1"); shift ;;
     esac
   done
-  public_url="${args[0]:?usage: workdown clone <public-url> [dir] [--private <url>]}"
+  public_url="${args[0]:?usage: wrkdwn clone <public-url> [dir] [--private <url>]}"
   dir="${args[1]:-$(basename "${public_url%.git}")}"
   [[ -n "$workdown_url" ]] || workdown_url="$(derive_workdown_url "$public_url")"
 
@@ -135,7 +135,7 @@ cmd_skill() {
       echo "==> installed agent skill at $dest/SKILL.md"
       ;;
     *)
-      echo "usage: workdown skill install" >&2; exit 1 ;;
+      echo "usage: wrkdwn skill install" >&2; exit 1 ;;
   esac
 }
 
@@ -143,14 +143,14 @@ write_skill_md() {
   cat <<'SKILL'
 ---
 name: workdown
-description: Read and maintain private team documentation (*.wrk.md files) that lives alongside code but is tracked in a separate private "workdown" git repo via the workdown CLI. Use this skill whenever you are working in a repository that contains a .workdown.git directory or any *.wrk.md files, whenever the user mentions workdown, workdown docs, or workdown repo, and whenever you are about to plan, modify, or explain code in such a repository — read the relevant workdown docs BEFORE making changes, and record decisions, caveats, and TODOs in them AFTER making changes.
+description: Read and maintain private team documentation (*.wrk.md files) that lives alongside code but is tracked in a separate private "workdown" git repo via the `wrkdwn` CLI. Use this skill whenever you are working in a repository that contains a .workdown.git directory or any *.wrk.md files, whenever the user mentions wrkdwn, workdown, workdown docs, or workdown repo, and whenever you are about to plan, modify, or explain code in such a repository — read the relevant workdown docs BEFORE making changes, and record decisions, caveats, and TODOs in them AFTER making changes.
 ---
 
 # Workdown docs
 
 This repository has a private documentation layer: files ending in `.wrk.md`
 sit next to the code they describe but are tracked in a separate private repo
-(`.workdown.git`), managed with the `workdown` CLI. The public repo's git never sees
+(`.workdown.git`), managed with the `wrkdwn` CLI. The public repo's git never sees
 them. They are authoritative team context: plans, decisions, tradeoffs,
 gotchas, and TODOs.
 
@@ -180,14 +180,14 @@ TODO: backfill expiry on legacy rows before removing fallback.
 Use `workdown`, which is git scoped to the private repo:
 
 ```bash
-workdown status
-workdown add path/to/file.wrk.md
-workdown commit -m "describe the docs change"
-workdown push
+wrkdwn status
+wrkdwn add path/to/file.wrk.md
+wrkdwn commit -m "describe the docs change"
+wrkdwn push
 ```
 
 NEVER commit `.wrk.md` files with plain `git`, and never use `git add -f` on
-them. If `workdown` is missing or `.workdown.git` doesn't exist, run `workdown setup`
+them. If `wrkdwn` is missing or `.workdown.git` doesn't exist, run `wrkdwn setup`
 (or tell the user) rather than improvising.
 
 ## Confidentiality rules (critical)
@@ -196,7 +196,7 @@ them. If `workdown` is missing or `.workdown.git` doesn't exist, run `workdown s
   commit messages, PR titles or descriptions, issue comments, code comments,
   or any other artifact that lands in the public repo.
 - Referring to a doc by filename is acceptable; reproducing its contents is not.
-- Never run `workdown clean` (the wrapper blocks it; do not work around the block —
+- Never run `wrkdwn clean` (the wrapper blocks it; do not work around the block —
   from the workdown repo's view the entire codebase is "ignored files").
 SKILL
 }
@@ -208,8 +208,8 @@ case "${1:-}" in
   setup) shift; cmd_setup "$@" ;;
   skill) shift; cmd_skill "$@" ;;
   clean)
-    echo "workdown: 'clean' is disabled — it would treat the whole codebase as ignored files." >&2
-    echo "workdown: remove stray .wrk.md files by hand instead." >&2
+    echo "wrkdwn: 'clean' is disabled — it would treat the whole codebase as ignored files." >&2
+    echo "wrkdwn: remove stray .wrk.md files by hand instead." >&2
     exit 1 ;;
   ""|-h|--help)
     sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//' ;;
@@ -217,7 +217,7 @@ case "${1:-}" in
     root="$(repo_root)"
     gd="$root/.workdown.git"
     if [[ ! -d "$gd" ]]; then
-      echo "workdown: no workdown repo at $gd (run 'workdown setup' or 'workdown clone')" >&2
+      echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn setup' or 'wrkdwn clone')" >&2
       exit 1
     fi
     exec git --git-dir="$gd" --work-tree="$root" "$@" ;;

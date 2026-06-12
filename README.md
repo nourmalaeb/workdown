@@ -13,7 +13,7 @@ src/auth/
 You maintain workdown files in a **working copy** of your repo: two git repos
 sharing one working tree. The public repo tracks the code and ignores
 `*.wrk.md`. A private workdown repo shares the same directory and tracks
-*only* `*.wrk.md`. The `workdown` command is just git, scoped to the private
+*only* `*.wrk.md`. The `wrkdwn` command is just git, scoped to the private
 side.
 
 ## Why
@@ -32,12 +32,14 @@ The source is open; the work doesn't have to be.
 
 ```bash
 git clone https://github.com/YOURORG/workdown.git
-ln -s "$PWD/workdown/bin/workdown" /usr/local/bin/workdown
+ln -s "$PWD/workdown/bin/wrkdwn" /usr/local/bin/wrkdwn
 ```
 
-Requires bash and git. macOS / Linux. (npm package coming.) Want it shorter?
-`alias wk=workdown` — the name `wrk` is intentionally avoided, it belongs to
-the HTTP benchmarking tool.
+Requires bash and git. macOS / Linux. (npm package coming.)
+
+**Naming:** the project is *workdown*; the command is `wrkdwn` — same
+vowel-free scheme as the `.wrk.md` extension, and it avoids colliding with
+other `workdown` binaries or `wrk`, the HTTP benchmarking tool.
 
 ## Quickstart
 
@@ -45,23 +47,23 @@ the HTTP benchmarking tool.
 # 1. Create a private repo next to your public one, named <repo>-workdown
 #    e.g. github.com/org/project  →  github.com/org/project-workdown (private!)
 
-# 2. Clone with the workdown layer attached (or `workdown setup` in an existing clone)
-workdown clone git@github.com:org/project.git
+# 2. Clone with the workdown layer attached (or `wrkdwn setup` in an existing clone)
+wrkdwn clone git@github.com:org/project.git
 
 # 3. Work normally. Write notes next to code as *.wrk.md files.
 cd project/src/auth
 vim sessions.wrk.md
 
 # 4. Commit notes with workdown; commit code with git. They never mix.
-workdown add sessions.wrk.md
-workdown commit -m "session redesign plan"
-workdown push
+wrkdwn add sessions.wrk.md
+wrkdwn commit -m "session redesign plan"
+wrkdwn push
 ```
 
-`workdown clone` derives the private URL by the `-workdown` naming convention;
+`wrkdwn clone` derives the private URL by the `-workdown` naming convention;
 pass `--private <url>` to override. Everything that isn't a workdown
-subcommand passes straight through to git: `workdown log`, `workdown diff`,
-`workdown blame`, etc.
+subcommand passes straight through to git: `wrkdwn log`, `wrkdwn diff`,
+`wrkdwn blame`, etc.
 
 ## Agents
 
@@ -69,7 +71,7 @@ Install the bundled skill so coding agents (Claude Code, etc.) read workdown
 files before touching code and write decisions back afterward:
 
 ```bash
-workdown skill install     # → ~/.claude/skills/workdown/
+wrkdwn skill install     # → ~/.claude/skills/workdown/
 ```
 
 The skill also enforces the confidentiality rule: agents may reference
@@ -82,7 +84,7 @@ The security model is **private-repo access control**, not obscurity — this
 tool being public doesn't weaken it. Three layers keep `*.wrk.md` files out of
 your public history:
 
-1. **Per-clone excludes** — `workdown setup` writes `*.wrk.md` into
+1. **Per-clone excludes** — `wrkdwn setup` writes `*.wrk.md` into
    `.git/info/exclude` (never committed, reveals nothing in the public repo).
 2. **pre-push hook** — blocks any push whose commits touch a `.wrk.md`, even
    via `git add -f`.
@@ -100,10 +102,10 @@ directory, no history rewriting, no sync jobs.
 
 ## Footguns handled for you
 
-- `workdown clean` is **disabled** — from the private repo's perspective your
+- `wrkdwn clean` is **disabled** — from the private repo's perspective your
   entire codebase is "ignored files", so `clean -x` would delete it.
-- `workdown add .` is safe: the whitelist means it can only ever stage `.wrk.md`.
-- `workdown setup` is idempotent; re-run it any time.
+- `wrkdwn add .` is safe: the whitelist means it can only ever stage `.wrk.md`.
+- `wrkdwn setup` is idempotent; re-run it any time.
 
 ## Known limitations
 
@@ -112,7 +114,7 @@ directory, no history rewriting, no sync jobs.
 - The private repo stays on a single `main` branch by design — docs persist
   across code-branch switches. Mark branch-specific docs in frontmatter.
 - The pre-push hook scans the last 500 commits per push; CI covers the rest.
-- Each clone needs `workdown setup` once (or use `workdown clone`).
+- Each clone needs `wrkdwn setup` once (or use `wrkdwn clone`).
 
 ## License
 

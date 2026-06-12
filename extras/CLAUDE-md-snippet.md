@@ -13,7 +13,7 @@ Rules:
 - When you make a non-obvious decision, hit a gotcha, or leave work unfinished,
   record it in the nearest relevant `.wrk.md` (create one next to the code if
   none exists). Keep entries short and dated.
-- Commit workdown docs with `workdown add <file> && workdown commit -m "..."` — NEVER
+- Commit workdown docs with `wrkdwn add <file> && workdown commit -m "..."` — NEVER
   with plain `git`. Plain `git` must never see these files.
 - NEVER quote, paste, or summarize the contents of a `.wrk.md` file in commit
   messages, PR titles/descriptions, code comments, or issue comments on the
