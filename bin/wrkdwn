@@ -46,6 +46,13 @@ cmd_setup() {
 
   # 1. Bare-clone the workdown repo into the project dir
   if [[ ! -d "$gd" ]]; then
+    if ! git ls-remote "$workdown_url" >/dev/null 2>&1; then
+      echo "wrkdwn: can't reach $workdown_url" >&2
+      echo "wrkdwn: it may not exist yet — create it (PRIVATE!) and re-run:" >&2
+      echo "wrkdwn:   gh repo create ${workdown_url#git@github.com:} --private" >&2
+      echo "wrkdwn: or pass a different URL: wrkdwn setup <url>" >&2
+      exit 1
+    fi
     echo "==> cloning workdown repo"
     git clone --bare "$workdown_url" "$gd"
     git --git-dir="$gd" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
@@ -56,7 +63,7 @@ cmd_setup() {
   # 2. Public repo never sees workdown files (info/exclude = uncommitted, reveals nothing)
   local pattern
   for pattern in '*.wrk.md' '.workdown.git/'; do
-    grep -qxF "$pattern" .git/info/exclude 2>/dev/null || echo "$pattern" >> .git/info/exclude
+    grep -qxF "$pattern" .git/info/exclude 2>/dev/null || echo "$pattern" >>.git/info/exclude
   done
   echo "==> public repo excludes written"
 
@@ -64,14 +71,14 @@ cmd_setup() {
   local ex="$gd/info/exclude"
   if ! grep -qxF '!*.wrk.md' "$ex" 2>/dev/null; then
     mkdir -p "$(dirname "$ex")"
-    printf '*\n!*/\n!*.wrk.md\n' >> "$ex"
+    printf '*\n!*/\n!*.wrk.md\n' >>"$ex"
   fi
   echo "==> workdown repo whitelist written"
 
   # 4. Pre-push hook: leaks die locally before CI ever sees them
   local hook=.git/hooks/pre-push
   if [[ ! -f "$hook" ]] || ! grep -q 'wrk\.md' "$hook"; then
-    cat >> "$hook" <<'HOOK'
+    cat >>"$hook" <<'HOOK'
 #!/usr/bin/env bash
 # Block any push whose commits introduce *.wrk.md files.
 while read -r _local_ref local_sha _remote_ref remote_sha; do
@@ -108,8 +115,14 @@ cmd_clone() {
   local public_url="" dir="" workdown_url="" args=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --private) workdown_url="$2"; shift 2 ;;
-      *) args+=("$1"); shift ;;
+    --private)
+      workdown_url="$2"
+      shift 2
+      ;;
+    *)
+      args+=("$1")
+      shift
+      ;;
     esac
   done
   public_url="${args[0]:?usage: wrkdwn clone <public-url> [dir] [--private <url>]}"
@@ -128,14 +141,16 @@ cmd_clone() {
 
 cmd_skill() {
   case "${1:-}" in
-    install)
-      local dest="$HOME/.claude/skills/workdown"
-      mkdir -p "$dest"
-      write_skill_md > "$dest/SKILL.md"
-      echo "==> installed agent skill at $dest/SKILL.md"
-      ;;
-    *)
-      echo "usage: wrkdwn skill install" >&2; exit 1 ;;
+  install)
+    local dest="$HOME/.claude/skills/workdown"
+    mkdir -p "$dest"
+    write_skill_md >"$dest/SKILL.md"
+    echo "==> installed agent skill at $dest/SKILL.md"
+    ;;
+  *)
+    echo "usage: wrkdwn skill install" >&2
+    exit 1
+    ;;
   esac
 }
 
@@ -204,21 +219,33 @@ SKILL
 # ---------------------------------------------------------------- dispatch
 
 case "${1:-}" in
-  clone) shift; cmd_clone "$@" ;;
-  setup) shift; cmd_setup "$@" ;;
-  skill) shift; cmd_skill "$@" ;;
-  clean)
-    echo "wrkdwn: 'clean' is disabled — it would treat the whole codebase as ignored files." >&2
-    echo "wrkdwn: remove stray .wrk.md files by hand instead." >&2
-    exit 1 ;;
-  ""|-h|--help)
-    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//' ;;
-  *)
-    root="$(repo_root)"
-    gd="$root/.workdown.git"
-    if [[ ! -d "$gd" ]]; then
-      echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn setup' or 'wrkdwn clone')" >&2
-      exit 1
-    fi
-    exec git --git-dir="$gd" --work-tree="$root" "$@" ;;
+clone)
+  shift
+  cmd_clone "$@"
+  ;;
+setup)
+  shift
+  cmd_setup "$@"
+  ;;
+skill)
+  shift
+  cmd_skill "$@"
+  ;;
+clean)
+  echo "wrkdwn: 'clean' is disabled — it would treat the whole codebase as ignored files." >&2
+  echo "wrkdwn: remove stray .wrk.md files by hand instead." >&2
+  exit 1
+  ;;
+"" | -h | --help)
+  sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+  ;;
+*)
+  root="$(repo_root)"
+  gd="$root/.workdown.git"
+  if [[ ! -d "$gd" ]]; then
+    echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn setup' or 'wrkdwn clone')" >&2
+    exit 1
+  fi
+  exec git --git-dir="$gd" --work-tree="$root" "$@"
+  ;;
 esac
