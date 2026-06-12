@@ -1,0 +1,39 @@
+name: workdown-guard
+# Hard-fails if any .wrk.md file ever reaches the public repo.
+# This is the last line of defense behind .git/info/exclude and the pre-push hook.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  no-shadow-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fail if any .wrk.md exists in the tree
+        run: |
+          if git ls-files -z | tr '\0' '\n' | grep -E '\.wrk\.md$'; then
+            echo "::error::workdown files found in the public tree. These must never be committed here."
+            exit 1
+          fi
+
+      - name: Fail if any commit in this event touches a .wrk.md
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            range="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+            # first push to a new branch: 'before' is all zeros
+            [[ "${{ github.event.before }}" =~ ^0+$ ]] && range="${{ github.sha }}"
+          fi
+          if git log --name-only --pretty=format: "$range" 2>/dev/null | grep -E '\.wrk\.md$'; then
+            echo "::error::A commit in this range touched a .wrk.md file (even if later deleted, it leaked into history)."
+            exit 1
+          fi

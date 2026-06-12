@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+# workdown — a private documentation layer on top of a public git repo.
+#
+#   workdown clone <public-url> [dir] [--private <url>]   clone + attach workdown repo
+#   workdown setup [<workdown-url>]                        attach workdown repo to existing clone
+#   workdown skill install                               install the agent skill (~/.claude/skills)
+#   workdown <any-git-command>                           git, scoped to the workdown repo
+#
+# The workdown repo shares this working tree but tracks ONLY *.wrk.md files.
+# Plain `git` never sees them; `workdown` never sees anything else.
+set -euo pipefail
+
+WORKDOWN_BRANCH="main"
+
+# ---------------------------------------------------------------- helpers
+
+derive_workdown_url() {
+  # org/project(.git) -> org/project-workdown(.git)
+  local url="$1"
+  if [[ "$url" == *.git ]]; then
+    printf '%s-workdown.git\n' "${url%.git}"
+  else
+    printf '%s-workdown\n' "$url"
+  fi
+}
+
+repo_root() {
+  git rev-parse --show-toplevel 2>/dev/null || {
+    echo "workdown: not inside a git repository" >&2
+    exit 1
+  }
+}
+
+# ---------------------------------------------------------------- setup
+
+cmd_setup() {
+  local root workdown_url="${1:-}"
+  root="$(repo_root)"
+  cd "$root"
+  local gd="$root/.workdown.git"
+
+  if [[ -z "$workdown_url" && ! -d "$gd" ]]; then
+    workdown_url="$(derive_workdown_url "$(git remote get-url origin)")"
+    echo "==> no workdown URL given, assuming: $workdown_url"
+  fi
+
+  # 1. Bare-clone the workdown repo into the project dir
+  if [[ ! -d "$gd" ]]; then
+    echo "==> cloning workdown repo"
+    git clone --bare "$workdown_url" "$gd"
+    git --git-dir="$gd" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+  else
+    echo "==> workdown repo already present"
+  fi
+
+  # 2. Public repo never sees workdown files (info/exclude = uncommitted, reveals nothing)
+  local pattern
+  for pattern in '*.wrk.md' '.workdown.git/'; do
+    grep -qxF "$pattern" .git/info/exclude 2>/dev/null || echo "$pattern" >> .git/info/exclude
+  done
+  echo "==> public repo excludes written"
+
+  # 3. Workdown repo sees ONLY workdown files (recursive whitelist)
+  local ex="$gd/info/exclude"
+  if ! grep -qxF '!*.wrk.md' "$ex" 2>/dev/null; then
+    mkdir -p "$(dirname "$ex")"
+    printf '*\n!*/\n!*.wrk.md\n' >> "$ex"
+  fi
+  echo "==> workdown repo whitelist written"
+
+  # 4. Pre-push hook: leaks die locally before CI ever sees them
+  local hook=.git/hooks/pre-push
+  if [[ ! -f "$hook" ]] || ! grep -q 'wrk\.md' "$hook"; then
+    cat >> "$hook" <<'HOOK'
+#!/usr/bin/env bash
+# Block any push whose commits introduce *.wrk.md files.
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [[ "$local_sha" =~ ^0+$ ]] && continue  # deleting a ref
+  if [[ "$remote_sha" =~ ^0+$ ]]; then range="$local_sha"; else range="$remote_sha..$local_sha"; fi
+  if git rev-list "$range" 2>/dev/null | head -500 | while read -r c; do
+       git diff-tree --no-commit-id --name-only -r "$c"
+     done | grep -E '\.wrk\.md$' >/dev/null; then
+    echo "pre-push: BLOCKED — a commit in this push touches a .wrk.md file." >&2
+    exit 1
+  fi
+done
+exit 0
+HOOK
+    chmod +x "$hook"
+  fi
+  echo "==> pre-push leak guard installed"
+
+  # 5. Materialize existing workdown docs into the working tree
+  if git --git-dir="$gd" rev-parse --verify "$WORKDOWN_BRANCH" >/dev/null 2>&1; then
+    git --git-dir="$gd" --work-tree="$root" checkout "$WORKDOWN_BRANCH" -- . 2>/dev/null || true
+    git --git-dir="$gd" symbolic-ref HEAD "refs/heads/$WORKDOWN_BRANCH"
+    echo "==> workdown docs checked out"
+  else
+    echo "==> workdown repo is empty; write your first doc, then: workdown add <file> && workdown commit"
+  fi
+
+  echo "==> done"
+}
+
+# ---------------------------------------------------------------- clone
+
+cmd_clone() {
+  local public_url="" dir="" workdown_url="" args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --private) workdown_url="$2"; shift 2 ;;
+      *) args+=("$1"); shift ;;
+    esac
+  done
+  public_url="${args[0]:?usage: workdown clone <public-url> [dir] [--private <url>]}"
+  dir="${args[1]:-$(basename "${public_url%.git}")}"
+  [[ -n "$workdown_url" ]] || workdown_url="$(derive_workdown_url "$public_url")"
+
+  echo "==> cloning public repo"
+  git clone "$public_url" "$dir"
+  cd "$dir"
+  cmd_setup "$workdown_url"
+  echo
+  echo "Ready: cd $dir"
+}
+
+# ---------------------------------------------------------------- skill
+
+cmd_skill() {
+  case "${1:-}" in
+    install)
+      local dest="$HOME/.claude/skills/workdown"
+      mkdir -p "$dest"
+      write_skill_md > "$dest/SKILL.md"
+      echo "==> installed agent skill at $dest/SKILL.md"
+      ;;
+    *)
+      echo "usage: workdown skill install" >&2; exit 1 ;;
+  esac
+}
+
+write_skill_md() {
+  cat <<'SKILL'
+---
+name: workdown
+description: Read and maintain private team documentation (*.wrk.md files) that lives alongside code but is tracked in a separate private "workdown" git repo via the workdown CLI. Use this skill whenever you are working in a repository that contains a .workdown.git directory or any *.wrk.md files, whenever the user mentions workdown, workdown docs, or workdown repo, and whenever you are about to plan, modify, or explain code in such a repository — read the relevant workdown docs BEFORE making changes, and record decisions, caveats, and TODOs in them AFTER making changes.
+---
+
+# Workdown docs
+
+This repository has a private documentation layer: files ending in `.wrk.md`
+sit next to the code they describe but are tracked in a separate private repo
+(`.workdown.git`), managed with the `workdown` CLI. The public repo's git never sees
+them. They are authoritative team context: plans, decisions, tradeoffs,
+gotchas, and TODOs.
+
+## Before changing code
+
+1. Look for `.wrk.md` files in the directory you're working in and its
+   ancestors (e.g. `find . -name '*.wrk.md'` from the repo root, or check the
+   nearest ones). Read them — they often explain why the code is the way it is.
+2. Check `PLANS/` at the repo root (if present) for cross-cutting docs.
+
+## After changing code
+
+Record anything a teammate or future agent would need: non-obvious decisions,
+rejected alternatives, gotchas you hit, unfinished work. Append to the nearest
+relevant `.wrk.md`, or create one next to the code. Keep entries short,
+dated, and signed:
+
+```markdown
+## 2026-06-11 — session token redesign (nour + claude)
+Decision: rotate refresh tokens on every use. Tradeoff: ...
+Gotcha: KV eventual consistency means ...
+TODO: backfill expiry on legacy rows before removing fallback.
+```
+
+## Committing workdown docs
+
+Use `workdown`, which is git scoped to the private repo:
+
+```bash
+workdown status
+workdown add path/to/file.wrk.md
+workdown commit -m "describe the docs change"
+workdown push
+```
+
+NEVER commit `.wrk.md` files with plain `git`, and never use `git add -f` on
+them. If `workdown` is missing or `.workdown.git` doesn't exist, run `workdown setup`
+(or tell the user) rather than improvising.
+
+## Confidentiality rules (critical)
+
+- NEVER quote, paste, or summarize the contents of any `.wrk.md` file in
+  commit messages, PR titles or descriptions, issue comments, code comments,
+  or any other artifact that lands in the public repo.
+- Referring to a doc by filename is acceptable; reproducing its contents is not.
+- Never run `workdown clean` (the wrapper blocks it; do not work around the block —
+  from the workdown repo's view the entire codebase is "ignored files").
+SKILL
+}
+
+# ---------------------------------------------------------------- dispatch
+
+case "${1:-}" in
+  clone) shift; cmd_clone "$@" ;;
+  setup) shift; cmd_setup "$@" ;;
+  skill) shift; cmd_skill "$@" ;;
+  clean)
+    echo "workdown: 'clean' is disabled — it would treat the whole codebase as ignored files." >&2
+    echo "workdown: remove stray .wrk.md files by hand instead." >&2
+    exit 1 ;;
+  ""|-h|--help)
+    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *)
+    root="$(repo_root)"
+    gd="$root/.workdown.git"
+    if [[ ! -d "$gd" ]]; then
+      echo "workdown: no workdown repo at $gd (run 'workdown setup' or 'workdown clone')" >&2
+      exit 1
+    fi
+    exec git --git-dir="$gd" --work-tree="$root" "$@" ;;
+esac
