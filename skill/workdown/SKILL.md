@@ -23,10 +23,11 @@ gotchas, and TODOs.
 Record anything a teammate or future agent would need: non-obvious decisions,
 rejected alternatives, gotchas you hit, unfinished work. Append to the nearest
 relevant `.wrk.md`, or create one next to the code. Keep entries short,
-dated, and signed:
+dated, and signed — identify people by their GitHub username, and agents by
+agent name:
 
 ```markdown
-## 2026-06-11 — session token redesign (nour + claude)
+## 2026-06-11 — session token redesign (nourmalaeb + claude)
 Decision: rotate refresh tokens on every use. Tradeoff: ...
 Gotcha: KV eventual consistency means ...
 TODO: backfill expiry on legacy rows before removing fallback.

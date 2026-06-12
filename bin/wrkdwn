@@ -31,6 +31,22 @@ repo_root() {
   }
 }
 
+warn_foreign_paths() {
+  # The whitelist exclude only constrains honest local staging; nothing stops
+  # the remote from tracking arbitrary paths, which pull/checkout would then
+  # write into the shared working tree. Detect and warn loudly.
+  local gd="$1" foreign
+  foreign="$(git --git-dir="$gd" ls-tree -r --name-only "$WORKDOWN_BRANCH" 2>/dev/null | grep -v '\.wrk\.md$' || true)"
+  [[ -z "$foreign" ]] && return 0
+  {
+    echo "wrkdwn: WARNING — the workdown repo tracks files that are not *.wrk.md:"
+    while IFS= read -r p; do echo "wrkdwn:     $p"; done <<<"$foreign"
+    echo "wrkdwn: it must only ever track workdown docs. These paths can be written"
+    echo "wrkdwn: over real files in your code checkout by pull/checkout/merge."
+    echo "wrkdwn: Inspect them and remove them from the workdown repo."
+  } >&2
+}
+
 # ---------------------------------------------------------------- setup
 
 cmd_setup() {
@@ -99,7 +115,8 @@ HOOK
 
   # 5. Materialize existing workdown docs into the working tree
   if git --git-dir="$gd" rev-parse --verify "$WORKDOWN_BRANCH" >/dev/null 2>&1; then
-    git --git-dir="$gd" --work-tree="$root" checkout "$WORKDOWN_BRANCH" -- . 2>/dev/null || true
+    warn_foreign_paths "$gd"
+    git --git-dir="$gd" --work-tree="$root" checkout "$WORKDOWN_BRANCH" -- '*.wrk.md' 2>/dev/null || true
     git --git-dir="$gd" symbolic-ref HEAD "refs/heads/$WORKDOWN_BRANCH"
     echo "==> workdown docs checked out"
   else
@@ -181,10 +198,11 @@ gotchas, and TODOs.
 Record anything a teammate or future agent would need: non-obvious decisions,
 rejected alternatives, gotchas you hit, unfinished work. Append to the nearest
 relevant `.wrk.md`, or create one next to the code. Keep entries short,
-dated, and signed:
+dated, and signed — identify people by their GitHub username, and agents by
+agent name:
 
 ```markdown
-## 2026-06-11 — session token redesign (nour + claude)
+## 2026-06-11 — session token redesign (nourmalaeb + claude)
 Decision: rotate refresh tokens on every use. Tradeoff: ...
 Gotcha: KV eventual consistency means ...
 TODO: backfill expiry on legacy rows before removing fallback.
@@ -246,6 +264,19 @@ clean)
     echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn setup' or 'wrkdwn clone')" >&2
     exit 1
   fi
-  exec git --git-dir="$gd" --work-tree="$root" "$@"
+  warn_foreign_paths "$gd"
+  case "$1" in
+  pull | checkout | switch | restore | merge | reset | rebase | stash | cherry-pick)
+    # These can write tracked files into the code working tree — no exec, so
+    # the foreign-path check can run again on whatever the command brought in.
+    rc=0
+    git --git-dir="$gd" --work-tree="$root" "$@" || rc=$?
+    warn_foreign_paths "$gd"
+    exit "$rc"
+    ;;
+  *)
+    exec git --git-dir="$gd" --work-tree="$root" "$@"
+    ;;
+  esac
   ;;
 esac
