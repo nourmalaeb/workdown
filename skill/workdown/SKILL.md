@@ -127,6 +127,10 @@ after the code is gone. `.WORKDOWN-ARCHIVE/` is invisible to the public repo
   intentional, just needs a commit.
 - Unstaged `D` (second column: ` D`) — deletion happened outside wrkdwn;
   surface these to the human and ask what to do before committing anything.
+- `D` on a file that exists in the workdown repo but not on disk — the file is
+  not deleted, just not materialized in this working tree (common in worktrees
+  or after a fresh clone). Run `wrkdwn materialize` to populate it. Do NOT
+  treat this as an actual deletion or commit the removal.
 
 **Before removing a directory**, run `wrkdwn status` to find any `.wrk.md`
 files inside it. Show them to the human and ask: archive or permanently delete?
