@@ -27,7 +27,7 @@ how carefully to engage with the full doc.
 ```yaml
 ---
 docs: "One-liner describing what this feature or directory does"
-status: active          # planned | active | stable | deprecated
+status: active          # planned | active | stable | deprecated | archived
 contributors:
   - github-username
 todos:
@@ -38,6 +38,8 @@ human_notes:
   - one-liner per thing a human should know before the session starts
 related:
   - ../path/to/other/Doc.wrk.md
+archived_from: path/to/original/Doc.wrk.md   # only present when status: archived
+archived_reason: "why the feature/directory was removed"    # only present when status: archived
 ---
 ```
 
@@ -92,6 +94,32 @@ wrkdwn push
 NEVER commit `.wrk.md` files with plain `git`, and never use `git add -f` on
 them. If `wrkdwn` is missing or `.workdown.git` doesn't exist, run `wrkdwn setup`
 (or tell the user) rather than improvising.
+
+## Archiving deleted docs
+
+When code is intentionally removed, archive its `.wrk.md` files to
+`.WORKDOWN-ARCHIVE/` rather than deleting them — decisions and history remain
+useful after the code is gone. `.WORKDOWN-ARCHIVE/` is invisible to the public
+repo (it only contains `.wrk.md` files).
+
+**Before deleting any directory**, run `wrkdwn status` and scan for `.wrk.md`
+files in the affected paths. If any exist, ask the human: accidental or
+intentional?
+
+- **Accidental**: restore with `wrkdwn checkout main -- <file>` and stop.
+- **Intentional**: archive:
+  1. Restore: `wrkdwn checkout main -- <original-path>`
+  2. Add to frontmatter:
+     ```yaml
+     status: archived
+     archived_from: <original-path-relative-to-repo-root>
+     archived_reason: "one-liner: why the feature/directory was removed"
+     ```
+  3. Move: `mkdir -p .WORKDOWN-ARCHIVE/<original-dir> && mv <original-path> .WORKDOWN-ARCHIVE/<original-path>`
+  4. Stage: `wrkdwn rm <original-path> && wrkdwn add .WORKDOWN-ARCHIVE/<original-path>`
+  5. Commit: `wrkdwn commit -m "archive docs for removed <feature>"`
+
+Use `wrkdwn rm <file.wrk.md>` to permanently delete a doc with no archiving.
 
 ## Confidentiality rules (critical)
 
