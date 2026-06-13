@@ -12,6 +12,7 @@
 set -euo pipefail
 
 WORKDOWN_BRANCH="main"
+WRKDWN_VERSION="0.1.0"
 
 # ---------------------------------------------------------------- helpers
 
@@ -445,6 +446,9 @@ clean)
   ;;
 "" | -h | --help)
   sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+  ;;
+-v | --version)
+  echo "wrkdwn $WRKDWN_VERSION"
   ;;
 *)
   root="$(repo_root)"
