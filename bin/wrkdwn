@@ -312,11 +312,11 @@ files inside it. Show them to the human and ask: archive or permanently delete?
 **Archive flow:**
   1. Restore: `wrkdwn checkout main -- <original-path>`
   2. Add to frontmatter:
-     \`\`\`yaml
+     ```yaml
      status: archived
      archived_from: <original-path-relative-to-repo-root>
      archived_reason: "one-liner: why the feature/directory was removed"
-     \`\`\`
+     ```
   3. Move: `mkdir -p .WORKDOWN-ARCHIVE/<original-dir> && mv <original-path> .WORKDOWN-ARCHIVE/<original-path>`
   4. Stage: `wrkdwn rm <original-path> && wrkdwn add .WORKDOWN-ARCHIVE/<original-path>`
   5. Commit: `wrkdwn commit -m "archive docs for removed <feature>"`
