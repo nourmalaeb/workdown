@@ -208,6 +208,23 @@ Gotcha: KV eventual consistency means ...
 TODO: backfill expiry on legacy rows before removing fallback.
 ```
 
+### When to include a PR reference
+
+Include a `PR:` line when the change is significant enough that a reviewer
+would want to trace the full discussion: a new feature, a removal, or an
+architectural decision. Skip it for routine fixes or small tweaks.
+
+To get the current PR number run `gh pr view --json number,url` (returns
+nothing if no open PR exists yet — omit the reference in that case).
+
+```markdown
+## 2026-06-11 — session token redesign (nourmalaeb + claude)
+PR: https://github.com/org/repo/pull/42
+Decision: rotate refresh tokens on every use. Tradeoff: ...
+Gotcha: KV eventual consistency means ...
+TODO: backfill expiry on legacy rows before removing fallback.
+```
+
 ## Committing workdown docs
 
 Use `workdown`, which is git scoped to the private repo:
