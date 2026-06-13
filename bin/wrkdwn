@@ -32,6 +32,41 @@ repo_root() {
   }
 }
 
+detect_git_host() {
+  local url="$1" host=""
+  if [[ "$url" =~ ^https?://([^/]+) ]]; then
+    host="${BASH_REMATCH[1]}"
+  elif [[ "$url" =~ ^git@([^:]+): ]]; then
+    host="${BASH_REMATCH[1]}"
+  fi
+  case "${host:-}" in
+    github.com)    echo "github" ;;
+    gitlab.com)    echo "gitlab" ;;
+    bitbucket.org) echo "bitbucket" ;;
+    *)             echo "${host:-unknown}" ;;
+  esac
+}
+
+create_hint() {
+  local workdown_url="$1"
+  local origin_url host
+  origin_url="$(git remote get-url origin 2>/dev/null || true)"
+  host="$(detect_git_host "$origin_url")"
+  case "$host" in
+    github)
+      local repo="${workdown_url#*github.com[/:]}"
+      echo "  gh repo create ${repo%.git} --private"
+      ;;
+    gitlab)
+      local repo="${workdown_url#*gitlab.com[/:]}"
+      echo "  glab repo create ${repo%.git} --private"
+      ;;
+    *)
+      echo "  create a PRIVATE repo at $workdown_url using your git host's UI or CLI"
+      ;;
+  esac
+}
+
 warn_foreign_paths() {
   # The whitelist exclude only constrains honest local staging; nothing stops
   # the remote from tracking arbitrary paths, which pull/checkout would then
@@ -65,7 +100,8 @@ cmd_setup() {
   if [[ ! -d "$gd" ]]; then
     if ! git ls-remote "$workdown_url" >/dev/null 2>&1; then
       echo "wrkdwn: can't reach $workdown_url" >&2
-      echo "wrkdwn: it may not exist yet — create a PRIVATE repo at that URL and re-run" >&2
+      echo "wrkdwn: it may not exist yet — create it (PRIVATE!) and re-run:" >&2
+      create_hint "$workdown_url" | while IFS= read -r line; do echo "wrkdwn:   $line" >&2; done
       echo "wrkdwn: or pass a different URL: wrkdwn setup <url>" >&2
       exit 1
     fi
