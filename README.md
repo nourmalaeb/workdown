@@ -109,8 +109,10 @@ directory, no history rewriting, no sync jobs.
 
 ## Known limitations
 
-- Fresh `git worktree add` checkouts won't contain workdown files; materialize
-  them with `git --git-dir=.workdown.git --work-tree=<worktree> checkout main -- .`
+- Fresh `git worktree add` checkouts won't contain workdown files; run
+  `wrkdwn materialize` from inside the new worktree to populate them.
+- `wrkdwn` commands work from any worktree automatically (discovery via
+  `git rev-parse --git-common-dir`). Run `wrkdwn init` from the main checkout only.
 - The private repo stays on a single `main` branch by design — docs persist
   across code-branch switches. Mark branch-specific docs in frontmatter.
 - The pre-push hook scans the last 500 commits per push; CI covers the rest.
