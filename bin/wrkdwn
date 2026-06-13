@@ -225,7 +225,7 @@ cmd_rm() {
   root="$(repo_root)"
   local gd="$root/.workdown.git"
   if [[ ! -d "$gd" ]]; then
-    echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn setup' or 'wrkdwn clone')" >&2
+    echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn init' or 'wrkdwn clone')" >&2
     exit 1
   fi
   warn_foreign_paths "$gd"
@@ -454,7 +454,7 @@ clean)
   root="$(repo_root)"
   gd="$root/.workdown.git"
   if [[ ! -d "$gd" ]]; then
-    echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn setup' or 'wrkdwn clone')" >&2
+    echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn init' or 'wrkdwn clone')" >&2
     exit 1
   fi
   warn_foreign_paths "$gd"
