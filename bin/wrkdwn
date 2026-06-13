@@ -114,10 +114,15 @@ cmd_setup() {
 
   # 2. Public repo never sees workdown files (info/exclude = uncommitted, reveals nothing)
   local pattern
-  for pattern in '*.wrk.md' '.workdown.git/'; do
+  for pattern in '*.wrk.md' '.workdown.git/' '.ignore'; do
     grep -qxF "$pattern" .git/info/exclude 2>/dev/null || echo "$pattern" >>.git/info/exclude
   done
   echo "==> public repo excludes written"
+
+  # 2b. Make .wrk.md files visible to fd/ripgrep-backed editor pickers (.ignore
+  #     is honoured by fd/rg but invisible to git, so it never leaks the extension)
+  grep -qxF '!*.wrk.md' .ignore 2>/dev/null || echo '!*.wrk.md' >>.ignore
+  echo "==> .ignore written (fd/rg will show .wrk.md files in editor pickers)"
 
   # 3. Workdown repo sees ONLY workdown files (recursive whitelist)
   local ex="$gd/info/exclude"
