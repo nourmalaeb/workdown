@@ -294,17 +294,22 @@ them. If `wrkdwn` is missing or `.workdown.git` doesn't exist, run `wrkdwn setup
 
 ## Archiving deleted docs
 
-When code is intentionally removed, archive its `.wrk.md` files to
-`.WORKDOWN-ARCHIVE/` rather than deleting them — decisions and history remain
-useful after the code is gone. `.WORKDOWN-ARCHIVE/` is invisible to the public
-repo (it only contains `.wrk.md` files).
+When code is removed, its `.wrk.md` docs should be archived to
+`.WORKDOWN-ARCHIVE/` rather than deleted — history and decisions remain useful
+after the code is gone. `.WORKDOWN-ARCHIVE/` is invisible to the public repo
+(it only contains `.wrk.md` files).
 
-**Before deleting any directory**, run `wrkdwn status` and scan for `.wrk.md`
-files in the affected paths. If any exist, ask the human: accidental or
-intentional?
+**Reading `wrkdwn status` output for deletions:**
 
-- **Accidental**: restore with `wrkdwn checkout main -- <file>` and stop.
-- **Intentional**: archive:
+- Staged `D` (first column: `D `) — deletion was done via `wrkdwn rm`;
+  intentional, just needs a commit.
+- Unstaged `D` (second column: ` D`) — deletion happened outside wrkdwn;
+  surface these to the human and ask what to do before committing anything.
+
+**Before removing a directory**, run `wrkdwn status` to find any `.wrk.md`
+files inside it. Show them to the human and ask: archive or permanently delete?
+
+**Archive flow:**
   1. Restore: `wrkdwn checkout main -- <original-path>`
   2. Add to frontmatter:
      \`\`\`yaml
