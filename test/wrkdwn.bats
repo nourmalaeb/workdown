@@ -328,3 +328,72 @@ do_init() {
   [ "$status" -ne 0 ]
   [[ "$output" == *"mutually exclusive"* ]]
 }
+
+# --------------------------------------------------------------------------
+# 9. Worktree support
+# --------------------------------------------------------------------------
+
+@test "worktree: wrkdwn commands work from inside a git worktree" {
+  local pub wd dir wt
+  pub="$(bare_repo project)"
+  wd="$(bare_repo project-workdown)"
+  dir="$(clone_with_commit "$pub")"
+  do_init "$dir" "$wd"
+  wt="$TEST_DIR/worktree"
+
+  git -C "$dir" worktree add "$wt" 2>/dev/null
+
+  run bash -c "cd \"$wt\" && wrkdwn status 2>&1"
+  [ "$status" -eq 0 ]
+}
+
+@test "worktree: wrkdwn init refuses to run from a worktree" {
+  local pub wd dir wt
+  pub="$(bare_repo project)"
+  wd="$(bare_repo project-workdown)"
+  dir="$(clone_with_commit "$pub")"
+  wt="$TEST_DIR/worktree"
+
+  git -C "$dir" worktree add "$wt" 2>/dev/null
+
+  run bash -c "cd \"$wt\" && wrkdwn init \"$wd\" 2>&1"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"main checkout"* ]]
+}
+
+@test "materialize: populates *.wrk.md files into current directory" {
+  local pub wd dir
+  pub="$(bare_repo project)"
+  wd="$(bare_repo project-workdown)"
+  dir="$(clone_with_commit "$pub")"
+  do_init "$dir" "$wd"
+
+  echo "# Notes" > "$dir/notes.wrk.md"
+  (cd "$dir" && wrkdwn add notes.wrk.md && wrkdwn commit -q -m "add notes") >/dev/null 2>&1
+  (cd "$dir" && wrkdwn push origin main -q) >/dev/null 2>&1
+
+  # Remove the file to simulate a missing doc, then rematerialize
+  rm "$dir/notes.wrk.md"
+  run bash -c "cd \"$dir\" && wrkdwn materialize 2>&1"
+  [ "$status" -eq 0 ]
+  [ -f "$dir/notes.wrk.md" ]
+}
+
+@test "materialize: populates docs into a fresh worktree" {
+  local pub wd dir wt
+  pub="$(bare_repo project)"
+  wd="$(bare_repo project-workdown)"
+  dir="$(clone_with_commit "$pub")"
+  do_init "$dir" "$wd"
+
+  echo "# Notes" > "$dir/notes.wrk.md"
+  (cd "$dir" && wrkdwn add notes.wrk.md && wrkdwn commit -q -m "add notes") >/dev/null 2>&1
+  (cd "$dir" && wrkdwn push origin main -q) >/dev/null 2>&1
+
+  wt="$TEST_DIR/worktree"
+  git -C "$dir" worktree add "$wt" 2>/dev/null
+
+  run bash -c "cd \"$wt\" && wrkdwn materialize 2>&1"
+  [ "$status" -eq 0 ]
+  [ -f "$wt/notes.wrk.md" ]
+}

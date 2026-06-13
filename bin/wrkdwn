@@ -3,6 +3,7 @@
 #
 #   wrkdwn clone <public-url> [dir] [--private <url>]   clone + attach workdown repo
 #   wrkdwn init [--local] [<workdown-url>]               attach workdown repo to existing clone
+#   wrkdwn materialize                                   populate working tree with *.wrk.md docs
 #   wrkdwn skill install                               install the agent skill (~/.claude/skills)
 #   wrkdwn rm <file.wrk.md> [...]                      stage deletion of workdown doc(s)
 #   wrkdwn <any-git-command>                           git, scoped to the workdown repo
@@ -84,6 +85,23 @@ warn_foreign_paths() {
   } >&2
 }
 
+find_workdown_git() {
+  local root="$1"
+  # Regular checkout: .workdown.git is next to .git
+  if [[ -d "$root/.workdown.git" ]]; then
+    echo "$root/.workdown.git"
+    return 0
+  fi
+  # Worktree: resolve via --git-common-dir, which always points to the main .git
+  local common_dir
+  common_dir="$(git rev-parse --git-common-dir 2>/dev/null)" || return 1
+  [[ "$common_dir" != /* ]] && common_dir="$root/$common_dir"
+  local candidate
+  candidate="$(dirname "$common_dir")/.workdown.git"
+  [[ -d "$candidate" ]] && echo "$candidate" && return 0
+  return 1
+}
+
 # ---------------------------------------------------------------- init
 
 cmd_init() {
@@ -103,6 +121,12 @@ cmd_init() {
   root="$(repo_root)"
   cd "$root"
   local gd="$root/.workdown.git"
+
+  if [[ -f "$root/.git" ]]; then
+    echo "wrkdwn: 'init' must be run from the main checkout, not a worktree" >&2
+    echo "wrkdwn: cd to your main checkout and re-run" >&2
+    exit 1
+  fi
 
   # 1. Create or reuse the workdown bare repo
   if [[ "$local_only" == true ]]; then
@@ -221,13 +245,12 @@ cmd_clone() {
 # ---------------------------------------------------------------- rm
 
 cmd_rm() {
-  local root
+  local root gd
   root="$(repo_root)"
-  local gd="$root/.workdown.git"
-  if [[ ! -d "$gd" ]]; then
-    echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn init' or 'wrkdwn clone')" >&2
+  gd="$(find_workdown_git "$root")" || {
+    echo "wrkdwn: no workdown repo found (run 'wrkdwn init' or 'wrkdwn clone' in the main checkout)" >&2
     exit 1
-  fi
+  }
   warn_foreign_paths "$gd"
   local arg
   for arg in "$@"; do
@@ -237,6 +260,24 @@ cmd_rm() {
     }
   done
   exec git --git-dir="$gd" --work-tree="$root" rm "$@"
+}
+
+# ---------------------------------------------------------------- materialize
+
+cmd_materialize() {
+  local root gd
+  root="$(repo_root)"
+  gd="$(find_workdown_git "$root")" || {
+    echo "wrkdwn: no workdown repo found (run 'wrkdwn init' in the main checkout first)" >&2
+    exit 1
+  }
+  if ! git --git-dir="$gd" rev-parse --verify "$WORKDOWN_BRANCH" >/dev/null 2>&1; then
+    echo "wrkdwn: workdown repo is empty — nothing to materialize" >&2
+    exit 1
+  fi
+  warn_foreign_paths "$gd"
+  git --git-dir="$gd" --work-tree="$root" checkout "$WORKDOWN_BRANCH" -- '*.wrk.md'
+  echo "==> workdown docs materialized into $root"
 }
 
 # ---------------------------------------------------------------- skill
@@ -431,6 +472,9 @@ setup)
   shift
   cmd_init "$@"
   ;;
+materialize)
+  cmd_materialize
+  ;;
 skill)
   shift
   cmd_skill "$@"
@@ -452,11 +496,10 @@ clean)
   ;;
 *)
   root="$(repo_root)"
-  gd="$root/.workdown.git"
-  if [[ ! -d "$gd" ]]; then
-    echo "wrkdwn: no workdown repo at $gd (run 'wrkdwn init' or 'wrkdwn clone')" >&2
+  gd="$(find_workdown_git "$root")" || {
+    echo "wrkdwn: no workdown repo found (run 'wrkdwn init' or 'wrkdwn clone' in the main checkout)" >&2
     exit 1
-  fi
+  }
   warn_foreign_paths "$gd"
   case "$1" in
   pull | checkout | switch | restore | merge | reset | rebase | stash | cherry-pick)
