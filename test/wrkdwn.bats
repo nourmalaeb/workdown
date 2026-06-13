@@ -39,23 +39,23 @@ clone_with_commit() {
   echo "$dir"
 }
 
-# Run wrkdwn setup inside $dir against the given workdown remote.
-do_setup() {
+# Run wrkdwn init inside $dir against the given workdown remote.
+do_init() {
   local dir="$1" wd_remote="$2"
-  (cd "$dir" && wrkdwn setup "$wd_remote") >/dev/null 2>&1
+  (cd "$dir" && wrkdwn init "$wd_remote") >/dev/null 2>&1
 }
 
 # --------------------------------------------------------------------------
 # 1. Clone derivation
 # --------------------------------------------------------------------------
 
-@test "clone derivation: setup derives -workdown suffix from origin URL" {
+@test "clone derivation: init derives -workdown suffix from origin URL" {
   local pub wd dir
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
 
-  run bash -c "cd \"$dir\" && wrkdwn setup 2>&1"
+  run bash -c "cd \"$dir\" && wrkdwn init 2>&1"
   [ "$status" -eq 0 ]
   [[ "$output" == *"assuming: $wd"* ]]
 }
@@ -66,7 +66,7 @@ do_setup() {
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
 
-  run bash -c "cd \"$dir\" && wrkdwn setup 2>&1"
+  run bash -c "cd \"$dir\" && wrkdwn init 2>&1"
   [ "$status" -eq 0 ]
   # Should end in project-workdown.git, not project.git-workdown or project.git-workdown.git
   [[ "$output" == *"project-workdown.git"* ]]
@@ -82,7 +82,7 @@ do_setup() {
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
-  do_setup "$dir" "$wd"
+  do_init "$dir" "$wd"
 
   mkdir -p "$dir/src/feature"
 
@@ -95,7 +95,7 @@ do_setup() {
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
-  do_setup "$dir" "$wd"
+  do_init "$dir" "$wd"
 
   mkdir -p "$dir/src"
   echo "# Feature doc" > "$dir/src/feature.wrk.md"
@@ -117,7 +117,7 @@ do_setup() {
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
-  do_setup "$dir" "$wd"
+  do_init "$dir" "$wd"
 
   echo "# Notes" > "$dir/notes.wrk.md"
   echo "public code" > "$dir/README.md"
@@ -134,7 +134,7 @@ do_setup() {
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
-  do_setup "$dir" "$wd"
+  do_init "$dir" "$wd"
 
   echo "# Notes" > "$dir/notes.wrk.md"
   echo "public code" > "$dir/README.md"
@@ -168,7 +168,7 @@ do_setup() {
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
-  do_setup "$dir" "$wd"
+  do_init "$dir" "$wd"
 
   # Force a .wrk.md into the public repo (bypasses wrkdwn protections)
   echo "leaked" > "$dir/secret.wrk.md"
@@ -185,7 +185,7 @@ do_setup() {
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
-  do_setup "$dir" "$wd"
+  do_init "$dir" "$wd"
 
   echo "public code" > "$dir/app.sh"
   git -C "$dir" add "$dir/app.sh"
@@ -196,17 +196,17 @@ do_setup() {
 }
 
 # --------------------------------------------------------------------------
-# 6. Idempotent setup
+# 6. Idempotent init
 # --------------------------------------------------------------------------
 
-@test "idempotent setup: running setup twice does not duplicate public exclude entries" {
+@test "idempotent init: running init twice does not duplicate public exclude entries" {
   local pub wd dir
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
 
-  do_setup "$dir" "$wd"
-  do_setup "$dir" "$wd"
+  do_init "$dir" "$wd"
+  do_init "$dir" "$wd"
 
   local excl="$dir/.git/info/exclude"
   [ "$(grep -c '^\*\.wrk\.md$' "$excl")" -eq 1 ]
@@ -214,14 +214,14 @@ do_setup() {
   [ "$(grep -c '^\.ignore$' "$excl")" -eq 1 ]
 }
 
-@test "idempotent setup: running setup twice does not duplicate workdown exclude entries" {
+@test "idempotent init: running init twice does not duplicate workdown exclude entries" {
   local pub wd dir
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
 
-  do_setup "$dir" "$wd"
-  do_setup "$dir" "$wd"
+  do_init "$dir" "$wd"
+  do_init "$dir" "$wd"
 
   local wd_excl="$dir/.workdown.git/info/exclude"
   # The block is *\n!*/\n!*.wrk.md — check each line appears exactly once
@@ -230,14 +230,14 @@ do_setup() {
   [ "$(grep -cxF '!*.wrk.md' "$wd_excl")" -eq 1 ]
 }
 
-@test "idempotent setup: running setup twice does not duplicate .ignore entries" {
+@test "idempotent init: running init twice does not duplicate .ignore entries" {
   local pub wd dir
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dir="$(clone_with_commit "$pub")"
 
-  do_setup "$dir" "$wd"
-  do_setup "$dir" "$wd"
+  do_init "$dir" "$wd"
+  do_init "$dir" "$wd"
 
   [ "$(grep -cxF '!*.wrk.md' "$dir/.ignore")" -eq 1 ]
 }
@@ -251,7 +251,7 @@ do_setup() {
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dev1="$(clone_with_commit "$pub")"
-  do_setup "$dev1" "$wd"
+  do_init "$dev1" "$wd"
 
   # Dev1 creates a doc and pushes it to the workdown remote
   echo "# Team notes" > "$dev1/notes.wrk.md"
@@ -262,7 +262,7 @@ do_setup() {
   # Dev2 clones fresh and runs setup
   dev2="$TEST_DIR/dev2"
   git clone -q "$pub" "$dev2" 2>/dev/null
-  (cd "$dev2" && wrkdwn setup "$wd") >/dev/null 2>&1
+  (cd "$dev2" && wrkdwn init "$wd") >/dev/null 2>&1
 
   # The workdown doc should have materialized
   [ -f "$dev2/notes.wrk.md" ]
@@ -275,7 +275,7 @@ do_setup() {
   pub="$(bare_repo project)"
   wd="$(bare_repo project-workdown)"
   dev1="$(clone_with_commit "$pub")"
-  do_setup "$dev1" "$wd"
+  do_init "$dev1" "$wd"
 
   echo "# Secret doc" > "$dev1/secret.wrk.md"
   (cd "$dev1" && wrkdwn add secret.wrk.md) >/dev/null 2>&1
@@ -284,9 +284,47 @@ do_setup() {
 
   dev2="$TEST_DIR/dev2"
   git clone -q "$pub" "$dev2" 2>/dev/null
-  (cd "$dev2" && wrkdwn setup "$wd") >/dev/null 2>&1
+  (cd "$dev2" && wrkdwn init "$wd") >/dev/null 2>&1
 
   # The file should NOT appear in the public git index
   run git -C "$dev2" ls-files secret.wrk.md
   [ "$output" = "" ]
+}
+
+# --------------------------------------------------------------------------
+# 8. Local-only init
+# --------------------------------------------------------------------------
+
+@test "local init: wrkdwn init --local succeeds without any remote" {
+  local pub dir
+  pub="$(bare_repo project)"
+  dir="$(clone_with_commit "$pub")"
+
+  run bash -c "cd \"$dir\" && wrkdwn init --local 2>&1"
+  [ "$status" -eq 0 ]
+  [ -d "$dir/.workdown.git" ]
+}
+
+@test "local init: add and commit work after --local init (no remote needed)" {
+  local pub dir
+  pub="$(bare_repo project)"
+  dir="$(clone_with_commit "$pub")"
+  (cd "$dir" && wrkdwn init --local) >/dev/null 2>&1
+
+  echo "# Notes" > "$dir/notes.wrk.md"
+  run bash -c "cd \"$dir\" && wrkdwn add notes.wrk.md && wrkdwn commit -m 'add notes' 2>&1"
+  [ "$status" -eq 0 ]
+
+  run bash -c "cd \"$dir\" && wrkdwn log --oneline 2>&1"
+  [[ "$output" == *"add notes"* ]]
+}
+
+@test "local init: --local and a URL are mutually exclusive" {
+  local pub dir
+  pub="$(bare_repo project)"
+  dir="$(clone_with_commit "$pub")"
+
+  run bash -c "cd \"$dir\" && wrkdwn init --local https://example.com/repo-workdown 2>&1"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"mutually exclusive"* ]]
 }

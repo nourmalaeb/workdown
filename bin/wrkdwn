@@ -2,7 +2,7 @@
 # wrkdwn — a private documentation layer on top of a public git repo.
 #
 #   wrkdwn clone <public-url> [dir] [--private <url>]   clone + attach workdown repo
-#   wrkdwn setup [<workdown-url>]                        attach workdown repo to existing clone
+#   wrkdwn init [--local] [<workdown-url>]               attach workdown repo to existing clone
 #   wrkdwn skill install                               install the agent skill (~/.claude/skills)
 #   wrkdwn rm <file.wrk.md> [...]                      stage deletion of workdown doc(s)
 #   wrkdwn <any-git-command>                           git, scoped to the workdown repo
@@ -83,33 +83,55 @@ warn_foreign_paths() {
   } >&2
 }
 
-# ---------------------------------------------------------------- setup
+# ---------------------------------------------------------------- init
 
-cmd_setup() {
-  local root workdown_url="${1:-}"
+cmd_init() {
+  local root workdown_url="" local_only=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --local) local_only=true; shift ;;
+      *) workdown_url="$1"; shift ;;
+    esac
+  done
+
+  if [[ "$local_only" == true && -n "$workdown_url" ]]; then
+    echo "wrkdwn: --local and a URL are mutually exclusive" >&2
+    exit 1
+  fi
+
   root="$(repo_root)"
   cd "$root"
   local gd="$root/.workdown.git"
 
-  if [[ -z "$workdown_url" && ! -d "$gd" ]]; then
-    workdown_url="$(derive_workdown_url "$(git remote get-url origin)")"
-    echo "==> no workdown URL given, assuming: $workdown_url"
-  fi
-
-  # 1. Bare-clone the workdown repo into the project dir
-  if [[ ! -d "$gd" ]]; then
-    if ! git ls-remote "$workdown_url" >/dev/null 2>&1; then
-      echo "wrkdwn: can't reach $workdown_url" >&2
-      echo "wrkdwn: it may not exist yet — create it (PRIVATE!) and re-run:" >&2
-      create_hint "$workdown_url" | while IFS= read -r line; do echo "wrkdwn:   $line" >&2; done
-      echo "wrkdwn: or pass a different URL: wrkdwn setup <url>" >&2
-      exit 1
+  # 1. Create or reuse the workdown bare repo
+  if [[ "$local_only" == true ]]; then
+    if [[ ! -d "$gd" ]]; then
+      echo "==> initializing local workdown repo (no remote)"
+      git init --bare -q --initial-branch="$WORKDOWN_BRANCH" "$gd"
+    else
+      echo "==> workdown repo already present"
     fi
-    echo "==> cloning workdown repo"
-    git clone --bare "$workdown_url" "$gd"
-    git --git-dir="$gd" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
   else
-    echo "==> workdown repo already present"
+    if [[ -z "$workdown_url" && ! -d "$gd" ]]; then
+      workdown_url="$(derive_workdown_url "$(git remote get-url origin)")"
+      echo "==> no workdown URL given, assuming: $workdown_url"
+    fi
+
+    if [[ ! -d "$gd" ]]; then
+      if ! git ls-remote "$workdown_url" >/dev/null 2>&1; then
+        echo "wrkdwn: can't reach $workdown_url" >&2
+        echo "wrkdwn: it may not exist yet — create it (PRIVATE!) and re-run:" >&2
+        create_hint "$workdown_url" | while IFS= read -r line; do echo "wrkdwn:   $line" >&2; done
+        echo "wrkdwn: or pass a different URL: wrkdwn init <url>" >&2
+        echo "wrkdwn: or start local-only (no remote, no team sync): wrkdwn init --local" >&2
+        exit 1
+      fi
+      echo "==> cloning workdown repo"
+      git clone --bare "$workdown_url" "$gd"
+      git --git-dir="$gd" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+    else
+      echo "==> workdown repo already present"
+    fi
   fi
 
   # 2. Public repo never sees workdown files (info/exclude = uncommitted, reveals nothing)
@@ -190,7 +212,7 @@ cmd_clone() {
   echo "==> cloning public repo"
   git clone "$public_url" "$dir"
   cd "$dir"
-  cmd_setup "$workdown_url"
+  cmd_init "$workdown_url"
   echo
   echo "Ready: cd $dir"
 }
@@ -348,7 +370,7 @@ wrkdwn push
 ```
 
 NEVER commit `.wrk.md` files with plain `git`, and never use `git add -f` on
-them. If `wrkdwn` is missing or `.workdown.git` doesn't exist, run `wrkdwn setup`
+them. If `wrkdwn` is missing or `.workdown.git` doesn't exist, run `wrkdwn init`
 (or tell the user) rather than improvising.
 
 ## Archiving deleted docs
@@ -400,9 +422,13 @@ clone)
   shift
   cmd_clone "$@"
   ;;
+init)
+  shift
+  cmd_init "$@"
+  ;;
 setup)
   shift
-  cmd_setup "$@"
+  cmd_init "$@"
   ;;
 skill)
   shift

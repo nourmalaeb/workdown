@@ -111,7 +111,7 @@ wrkdwn push
 ```
 
 NEVER commit `.wrk.md` files with plain `git`, and never use `git add -f` on
-them. If `wrkdwn` is missing or `.workdown.git` doesn't exist, run `wrkdwn setup`
+them. If `wrkdwn` is missing or `.workdown.git` doesn't exist, run `wrkdwn init`
 (or tell the user) rather than improvising.
 
 ## Archiving deleted docs

@@ -47,7 +47,7 @@ other `workdown` binaries or `wrk`, the HTTP benchmarking tool.
 # 1. Create a private repo next to your public one, named <repo>-workdown
 #    e.g. github.com/org/project  →  github.com/org/project-workdown (private!)
 
-# 2. Clone with the workdown layer attached (or `wrkdwn setup` in an existing clone)
+# 2. Clone with the workdown layer attached (or `wrkdwn init` in an existing clone)
 wrkdwn clone git@github.com:org/project.git
 
 # 3. Work normally. Write notes next to code as *.wrk.md files.
@@ -84,7 +84,7 @@ The security model is **private-repo access control**, not obscurity — this
 tool being public doesn't weaken it. Three layers keep `*.wrk.md` files out of
 your public history:
 
-1. **Per-clone excludes** — `wrkdwn setup` writes `*.wrk.md` into
+1. **Per-clone excludes** — `wrkdwn init` writes `*.wrk.md` into
    `.git/info/exclude` (never committed, reveals nothing in the public repo).
 2. **pre-push hook** — blocks any push whose commits touch a `.wrk.md`, even
    via `git add -f`.
@@ -105,7 +105,7 @@ directory, no history rewriting, no sync jobs.
 - `wrkdwn clean` is **disabled** — from the private repo's perspective your
   entire codebase is "ignored files", so `clean -x` would delete it.
 - `wrkdwn add .` is safe: the whitelist means it can only ever stage `.wrk.md`.
-- `wrkdwn setup` is idempotent; re-run it any time.
+- `wrkdwn init` is idempotent; re-run it any time.
 
 ## Known limitations
 
@@ -114,7 +114,7 @@ directory, no history rewriting, no sync jobs.
 - The private repo stays on a single `main` branch by design — docs persist
   across code-branch switches. Mark branch-specific docs in frontmatter.
 - The pre-push hook scans the last 500 commits per push; CI covers the rest.
-- Each clone needs `wrkdwn setup` once (or use `wrkdwn clone`).
+- Each clone needs `wrkdwn init` once (or use `wrkdwn clone`).
 
 ## License
 
