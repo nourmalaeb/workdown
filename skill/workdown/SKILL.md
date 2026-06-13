@@ -52,9 +52,9 @@ contributors:
 todos:
   - one-liner per outstanding action item
 gotchas:
-  - one-liner per trap or non-obvious constraint
-human_notes:
-  - one-liner per thing a human should know before the session starts
+  - one-liner per trap, constraint, or important thing to know
+decisions:
+  - one-liner per important decision; expand in the body if needed
 related:
   - ../path/to/other/Doc.wrk.md
 archived_from: path/to/original/Doc.wrk.md   # only present when status: archived
@@ -62,8 +62,8 @@ archived_reason: "why the feature/directory was removed"    # only present when 
 ---
 ```
 
-When writing entries: add to `todos:` for new action items, `gotchas:` for
-traps you hit, `human_notes:` for things a human should know. Remove resolved
+When writing entries: add to `todos:` for action items, `gotchas:` for traps
+or important constraints, `decisions:` for key choices made. Remove resolved
 `todos:` entries — the body entry is the permanent record. Keep each line
 short; full context belongs in the body.
 
