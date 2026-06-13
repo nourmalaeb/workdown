@@ -193,6 +193,34 @@ gotchas, and TODOs.
    nearest ones). Read them — they often explain why the code is the way it is.
 2. Check `PLANS/` at the repo root (if present) for cross-cutting docs.
 
+## Frontmatter (optional)
+
+`.wrk.md` files may open with YAML frontmatter. All fields are optional — omit
+any that aren't relevant. Scan frontmatter before reading the body to decide
+how carefully to engage with the full doc.
+
+```yaml
+---
+docs: "One-liner describing what this feature or directory does"
+status: active          # planned | active | stable | deprecated
+contributors:
+  - github-username
+todos:
+  - one-liner per outstanding action item
+gotchas:
+  - one-liner per trap or non-obvious constraint
+human_notes:
+  - one-liner per thing a human should know before the session starts
+related:
+  - ../path/to/other/Doc.wrk.md
+---
+```
+
+When writing entries: add to `todos:` for new action items, `gotchas:` for
+traps you hit, `human_notes:` for things a human should know. Remove resolved
+`todos:` entries — the body entry is the permanent record. Keep each line
+short; full context belongs in the body.
+
 ## After changing code
 
 Record anything a teammate or future agent would need: non-obvious decisions,

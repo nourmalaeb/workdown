@@ -18,6 +18,34 @@ gotchas, and TODOs.
    nearest ones). Read them — they often explain why the code is the way it is.
 2. Check `PLANS/` at the repo root (if present) for cross-cutting docs.
 
+## Frontmatter (optional)
+
+`.wrk.md` files may open with YAML frontmatter. All fields are optional — omit
+any that aren't relevant. Scan frontmatter before reading the body to decide
+how carefully to engage with the full doc.
+
+```yaml
+---
+docs: "One-liner describing what this feature or directory does"
+status: active          # planned | active | stable | deprecated
+contributors:
+  - github-username
+todos:
+  - one-liner per outstanding action item
+gotchas:
+  - one-liner per trap or non-obvious constraint
+human_notes:
+  - one-liner per thing a human should know before the session starts
+related:
+  - ../path/to/other/Doc.wrk.md
+---
+```
+
+When writing entries: add to `todos:` for new action items, `gotchas:` for
+traps you hit, `human_notes:` for things a human should know. Remove resolved
+`todos:` entries — the body entry is the permanent record. Keep each line
+short; full context belongs in the body.
+
 ## After changing code
 
 Record anything a teammate or future agent would need: non-obvious decisions,
@@ -28,6 +56,23 @@ agent name:
 
 ```markdown
 ## 2026-06-11 — session token redesign (nourmalaeb + claude)
+Decision: rotate refresh tokens on every use. Tradeoff: ...
+Gotcha: KV eventual consistency means ...
+TODO: backfill expiry on legacy rows before removing fallback.
+```
+
+### When to include a PR reference
+
+Include a `PR:` line when the change is significant enough that a reviewer
+would want to trace the full discussion: a new feature, a removal, or an
+architectural decision. Skip it for routine fixes or small tweaks.
+
+To get the current PR number run `gh pr view --json number,url` (returns
+nothing if no open PR exists yet — omit the reference in that case).
+
+```markdown
+## 2026-06-11 — session token redesign (nourmalaeb + claude)
+PR: https://github.com/org/repo/pull/42
 Decision: rotate refresh tokens on every use. Tradeoff: ...
 Gotcha: KV eventual consistency means ...
 TODO: backfill expiry on legacy rows before removing fallback.
