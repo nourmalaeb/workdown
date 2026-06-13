@@ -255,6 +255,25 @@ gotchas, and TODOs.
    nearest ones). Read them — they often explain why the code is the way it is.
 2. Check `PLANS/` at the repo root (if present) for cross-cutting docs.
 
+## Where to put docs
+
+Docs live **next to the code they describe**. An agent or teammate editing
+`src/auth/middleware.ts` should find context in `src/auth/Doc.wrk.md` or
+`src/auth/middleware.wrk.md` — not in a top-level wiki they have to remember
+to consult.
+
+Naming:
+- `Doc.wrk.md` — the directory-level doc. Describes what the directory as a
+  whole does, cross-cutting decisions, and gotchas for anyone working in it.
+- `<feature>.wrk.md` — a file-level doc for a specific complex file (e.g.
+  `wrkdwn.wrk.md` next to the `wrkdwn` binary). Use when a single file
+  carries enough history or decisions to warrant its own doc.
+
+When creating a new doc: start with frontmatter only (`docs:`, `status:`,
+`todos:` if any). Add body entries as decisions are made. A stub is better
+than no doc — it signals that the directory is documented even before anything
+interesting has happened.
+
 ## Frontmatter (optional)
 
 `.wrk.md` files may open with YAML frontmatter. All fields are optional — omit
