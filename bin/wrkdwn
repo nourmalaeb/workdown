@@ -65,8 +65,7 @@ cmd_setup() {
   if [[ ! -d "$gd" ]]; then
     if ! git ls-remote "$workdown_url" >/dev/null 2>&1; then
       echo "wrkdwn: can't reach $workdown_url" >&2
-      echo "wrkdwn: it may not exist yet — create it (PRIVATE!) and re-run:" >&2
-      echo "wrkdwn:   gh repo create ${workdown_url#git@github.com:} --private" >&2
+      echo "wrkdwn: it may not exist yet — create a PRIVATE repo at that URL and re-run" >&2
       echo "wrkdwn: or pass a different URL: wrkdwn setup <url>" >&2
       exit 1
     fi
